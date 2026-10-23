@@ -1,0 +1,31 @@
+{
+  "source": "scripts/rescore_saved.py",
+  "rdkit": "2024.03.5",
+  "n_pairs": 309,
+  "n_parent_strings": 155,
+  "n_standardized_parents": 154,
+  "endpoint_hits": {
+    "exact": 104,
+    "nostereo": 138,
+    "standardized": 145
+  },
+  "rule_coverage_hits": 223,
+  "rule_top5_ceiling_hits": 221,
+  "fingerprint_comparison": {
+    "recall@5": 0.459546925566343,
+    "precision@5": 0.18193548387096775,
+    "any_hit@5": 0.6129032258064516
+  },
+  "selected_prior_weight": 0.75,
+  "input_sha256": {
+    "data/test_set.csv": "00160e8a7bde3537e83f426eac1c0cc6a107ea708f0b294d90a13439e69f2dab",
+    "data/processed/dev.jsonl": "22d15ae0f10c974f8fc29a99f7b5fd550d5d222f842f2b2575f1df1902fed13c",
+    "SOM/som_candidate_scores.json": "2839cbd3407691bebdd3aebbb5b6f6cd2f0dcc9603058a6deb99ec7592e5c9e6",
+    "rules/metabolism_rules.csv": "a7894d23272587e4c81f6e16f5f79645f494d25ca7b7f9b8eed9b3d9b0f2ce32",
+    "src/evaluation.py": "f82592eb0b2d13592fe5c4a615e71a9c505c56aff8a4377cf548211845f6e47d",
+    "src/decoding.py": "410a35d80ffd32ab3556b403ccdf02957cf6f07e4f53212f4945c1f0a844611b",
+    "SOM/som_predicted_sites.json": "2abd3c8608a619e6a801496ec4d29c6a33d8de4933f88d10cd5b4f02963d25a2",
+    "SOM/som_predicted_sites_dev.json": "db0539677bca5fa825a61fbe52e0e26c3dc89ed44c263aeabdfd56f7ef15d899",
+    "SOM/som_prior.ipynb": "65729863a8ea566d0e0a6bc03726d60b04cbcafc8f09407b4c9896525f66a369"
+  }
+}
