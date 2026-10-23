@@ -328,17 +328,18 @@ candidates.</p>
 development subsets. Recall@5 measures the fraction of recorded metabolites recovered within
 five predictions. Cross-entropy loss measures how well the model predicts the tokens in the
 recorded answer strings.</p>
-<p>The figure shows how the generator changed during training. Development loss was measured on
-160 examples, and recall@5 on {ft['probe_molecules']} parent structures carrying {PROBE_PAIRS}
-recorded drug&ndash;metabolite pairs. Development loss was lowest after one epoch, where the model
-recovered <b>{FT_LOW['dev_recall5']:.1%}</b> of the recorded metabolites within its five
-predictions. Recovery reached <b>{FT_PICK['dev_recall5']:.1%} after four epochs</b>, an improvement
-of <b>{(FT_PICK['dev_recall5'] - FT_LOW['dev_recall5']) * 100:.1f} percentage points</b>.</p>
-<p>We selected the four-epoch checkpoint because it recovered the most recorded metabolites on the
-development subset. Training loss continued to fall over those epochs while development loss rose,
-so the model was fitting its training examples more closely and predicting the development answer
-strings less well. The improvement in metabolite recovery has to be read alongside that evidence
-of possible overfitting.</p>
+<p>The figure shows how the generator’s performance changed during training. We measured
+development loss on 160 examples and recall@5 on a separate subset of {ft['probe_molecules']} parent structures
+containing {PROBE_PAIRS} recorded drug&ndash;metabolite pairs. Development loss was lowest after one
+epoch, when the model recovered <b>{FT_LOW['dev_recall5']:.1%}</b> of the recorded metabolites within its five
+predictions. Recovery reached <b>{FT_PICK['dev_recall5']:.1%} after four epochs</b>, an improvement of
+<b>{(FT_PICK['dev_recall5'] - FT_LOW['dev_recall5']) * 100:.1f} percentage points</b>. We selected this four-epoch checkpoint because it recovered
+the most recorded metabolites on the development subset.</p>
+<p>During this period, training loss continued to fall and development loss increased. This suggests
+that the model was becoming more closely fitted to its training examples, with poorer prediction
+of the development answer strings. The improvement in metabolite recovery therefore needs to be
+considered alongside this evidence of possible overfitting.</p>
+
 <figure class=fig id=figure-1>
 <img src="{png('finetune_curves.png')}" alt="Generator training loss and development recall at individual checkpoints">
 <figcaption><b>Figure 1. Generator training and model selection.</b> Top: training loss, as a

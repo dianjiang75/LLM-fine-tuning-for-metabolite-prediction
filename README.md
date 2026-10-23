@@ -1,6 +1,112 @@
-# Metabolite prediction with a fine-tuned LLM
+# Metabolite prediction by fine-tuning Qwen3-8B
 
-Given a parent drug molecule as SMILES, predict the structures of its metabolites.
+Given a parent drug as a SMILES string, predict the structures of its metabolites. Forty-two
+SMIRKS rules enumerate every candidate those rules can produce for the parent, a median of 32 per
+parent. Qwen3-8B, fine-tuned with LoRA, answers yes or no for each candidate, and the five with the
+highest log P(yes) − log P(no) are returned.
+
+The full writeup is [`WRITEUP.html`](WRITEUP.html). Every measured number, with how to reproduce
+it, is in [`docs/FINDINGS.md`](docs/FINDINGS.md), and the training runs are on
+[W&B](https://wandb.ai/dianjiang75/metabolite-prediction).
+
+## Results
+
+All scores are on a held-out test set of 309 drug–metabolite pairs. Recall@5 is the share of
+recorded metabolites that appear among the five predictions.
+
+The project asked three questions.
+
+1. **Write metabolites from scratch, or pick from rule-generated candidates?** Pick, once the
+   model is trained to rank. A ranker trained directly reaches 46.0% recall@5. Reusing the
+   generative fine-tune as a ranker scores 30.7%, and fine-tuned generation scores 21.4%. The
+   untuned model scores 16.2% in the same yes/no format and 4.9% writing metabolites from scratch.
+2. **Does more data help?** Little. Adding mammalian GOSTAR records took the ranker's training
+   examples from 24,025 to 60,520 and moved recall@5 from 46.0% to 46.6%. Both runs stopped
+   improving at about 1.5 epochs.
+3. **Does a separate site-of-metabolism adapter help?** Only if its sites are right. Site labels
+   derived from the known answers raise recall@5 from 46.6% to 61.2%. The adapter marks at least
+   one labelled site for 62.6% of drugs, and filtering candidates on its predictions drops recall
+   to 32.4%. A score adjustment chosen on development data keeps every candidate and reaches 47.9%
+   against a 46.9% baseline, with a 95% interval of −0.7 to +2.7 points.
+
+| # | Configuration | recall@5 | precision@5 | drugs with ≥1 hit |
+|---|---|---|---|---|
+| 1 | Untuned, generative (control) | 4.9% | 1.8% | 8.4% |
+| 2 | Fine-tuned, generative | 21.4% | 8.5% | 36.8% |
+| 3 | Fine-tuned generative used as ranker | 30.7% | 12.0% | 45.8% |
+| 4 | Untuned, ranking by likelihood | 20.4% | 8.0% | 34.2% |
+| 5 | Untuned, ranking (control) | 16.2% | 6.3% | 26.5% |
+| 6 | Fine-tuned to rank | **46.0%** | 17.9% | 61.3% |
+| 7 | Fine-tuned to rank, +GOSTAR | **46.6%** | 18.5% | 63.2% |
+
+The test set has 309 pairs over 155 parent strings, which are 154 distinct drugs after
+standardisation. Results at k = 1, 3 and 5 are in [`docs/arm_results.csv`](docs/arm_results.csv).
+
+![Recall@5 for each prediction approach](docs/arm_comparison.png)
+
+*Metabolite recovery across prediction approaches. The 71.5% ceiling applies to ranking the fixed
+rule-generated candidate lists.*
+
+### Against published systems
+
+MetaTrans counts a prediction as correct when its fingerprint Tanimoto similarity to a reference
+is exactly 1.0. Scoring this method's top five the same way puts all four systems on one matching
+rule.
+
+| Top-5, fingerprint equality | recall@5 | precision@5 | drugs with ≥1 hit |
+|---|---|---|---|
+| This method | 44.7% | 17.7% | 60.6% |
+| MetaTrans | 42.5% | 23.5% | 80.0% |
+| SyGMa (rule-based, 2008) | 42.4% | 23.4% | 72.3% |
+| GLORYx | 30.2% | 16.6% | 64.6% |
+
+Published figures are the top-5 window of Table 4 in Litsa, Das & Kavraki, *Chem. Sci.* 2020,
+measured on their own test set.
+
+### Training
+
+![Generator training and model selection](docs/finetune_curves.png)
+
+*Generator training and model selection. Development loss was lowest after one epoch, when the
+model recovered 19.4% of the development metabolites within five predictions. Recovery reached
+28.6% after four epochs, and that checkpoint was kept.*
+
+![Ranking-model training](docs/reranker_curves.png)
+
+*Ranking-model training. Development recall@5 on 40 drugs carrying 68 recorded pairs. The base
+set has 24,025 examples and the GOSTAR-expanded set 60,520. Each curve is one training run.*
+
+### Where the remaining error is
+
+A ranker can only return what the rules produce, so its score factors exactly: 46.0% overall
+equals 72.2% rule coverage times 63.7% recall when the answer is reachable. The rules fail to
+propose 86 of the 309 recorded metabolites, and a flawless top-five ranker of the existing lists
+would reach 71.5%.
+
+Misses also depend on the reaction. The ranker recovers 28 of 29 O-glucuronidation products but
+only 18 of 42 aliphatic hydroxylations. For 14 of the 24 missed hydroxylations, another product of
+the same rule made the top five, which points to the reaction site as the hard part.
+
+![Recovery by reaction type](docs/misses_by_chemistry.png)
+
+*Recovery by reaction type: recovered metabolites, candidates the ranking missed, and metabolites
+absent from the candidate lists. This uses the later GOSTAR scoring pass, which recovered 145 of
+309 metabolites (46.9%).*
+
+### Other results
+
+- **Model size made no difference.** Seven untuned base models from 4B to 397B parameters spanned
+  only 8.4 points on 120 molecules, too few to separate anything closer than about 10 points.
+- **Pooling model-generated candidates hurt.** Adding the model's own structures to the rule
+  candidates raised coverage from 72.2% to 75.1% but dropped recall@5 from 46.9% to 29.8%, most
+  likely because every negative the ranker trained on came from a rule.
+
+### How it was measured
+
+Training used 4,276 pairs, development 437 and test 309, with splits separated by standardised
+drug identity. Development data chose the saved models, and test drugs were excluded from both
+training and selection. Rule development included inspection of test transformations, and 44% of
+test parents share a scaffold with a training parent, so the evaluation is exploratory.
 
 ## Layout
 
@@ -160,61 +266,3 @@ affects the headline numbers, which come from the current run and are reproducib
 records.
 
 Experiment record: [https://wandb.ai/dianjiang75/metabolite-prediction](https://wandb.ai/dianjiang75/metabolite-prediction)
-
-## Result
-
-**Fine-tuned to rank**, recall@5: 46.0% (17.2% at recall@1), or 46.6% (18.1%) with GOSTAR
-mammalian data added. The best **fine-tuned generative** arm reaches 21.4%. The full arm table is in `WRITEUP.html`.
-
-Measured on the holdout test set, 309 pairs over 155 parents, standardised-SMILES matching.
-
-The base train set contains 4,276 pairs over 2,312 canonical parent strings, and dev contains
-437 pairs over 250 strings. Splits are disjoint under standardised parent identity. Dev selects
-checkpoints; supplied test parents are excluded from weight fitting and checkpoint selection.
-Rule development inspected test misses, so the final pipeline’s benchmark is exploratory and
-needs validation on a newly reserved cohort (`docs/FINDINGS.md` §10).
-
-Supplied answer-derived site annotations raise recall@5 from 46.6% to 61.2% in the oracle filter.
-Predicted-site filtering scores 32.4%. A dominating site bonus retains every candidate and scores
-37.5%, recovering some of the gate's losses. The dev-selected bonus (`lambda=0.75`) scores 47.9%
-against its matched cached-score baseline of 46.9%, with a paired 95% interval for the difference
-of [−0.65, +2.70] points. Its incremental benefit remains uncertain.
-
-Known limitations include incorrect product branches in three chemistry rules and conflicting
-candidate labels across equivalent molecular representations. Repairs require regenerated
-candidates or training data and reevaluation; the current recorded experiments retain those
-limitations. See `docs/FINDINGS.md` §21.
-
-The controls, the split of recall into coverage and ranking, the comparison with published
-baselines and the next steps are in `WRITEUP.html`.
-
-## Measured without a model
-
-| | |
-|---|---|
-| Metric ceiling | top-1 recall cannot exceed **0.502** under exact canonical SMILES, or 0.515 once tautomers and stereochemistry are standardised (309 rows, 155 parents) |
-| Baseline correction | MetaTrans reports no top-1. Its 42.5% is top-5; the 30.2% sometimes paired with it is GLORYx's |
-| No-model floor | echoing the parent back scores **0.634 Tanimoto** while getting 0% correct; a wrong-site prediction still scores 0.72 |
-| Leakage | 0% exact parent overlap with training, but 44% scaffold overlap |
-| Rule enumeration | **72.2% coverage** of the holdout test set (standardised; 68.6% stereo-stripped, 53.7% exact) at a median of **32 candidates** per parent |
-
-The rules reach 223 of 309 reference rows. A flawless top-five ranking of those candidates can
-recover at most 221/309 (71.5%) because some parents have more than five reachable answers.
-Published systems were measured on different cohorts and output policies, so their reported
-values are context only.
-
-## Decisions
-
-- **USPTO is not used.** It is a reaction corpus, not a metabolism one, and it lists the
-  conjugating co-substrate as a reactant, so transferase metabolites cannot be learned from it
-  in the form this task needs.
-- **SyGMa and GLORYx rule sets are not imported.** 90.6% of test transformations already appear in
-  the training data, but a rule must also fire at the right *site*. Of the 86 test metabolites the rules cannot reach, **66 belong to
-  transformation types the training data already contains** (21.4% of all test pairs), so a
-  broader rule library could recover familiar chemistry at sites these 42 rules miss. The benefit
-  of an external library is untested; the reason for not importing one is the CDK-to-RDKit
-  translation cost, not a coverage bound.
-- **Every molecule passes through one `standardize()` function before comparison**: normalised,
-  neutral, canonical tautomer, stereochemistry dropped. The source data is internally inconsistent
-  about tautomers, with 58% of parents changing under canonicalisation, and 22.6% of training
-  skeletons recorded with more than one stereo form.
