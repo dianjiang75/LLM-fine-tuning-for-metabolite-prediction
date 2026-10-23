@@ -1,0 +1,23 @@
+{
+  "base_model": "Qwen/Qwen3-8B",
+  "rank": 32,
+  "batch": 48,
+  "learning_rate": 0.0001,
+  "epochs": 3,
+  "training_steps": 834,
+  "train_examples": 13373,
+  "best_step": 695,
+  "best_checkpoint": "tinker://68aa37be-d0f1-5b72-99db-35844219fead:train:0/sampler_weights/som695",
+  "best_any_hit": 0.7,
+  "untuned_any_hit": 0.0,
+  "untuned_usable": 0.0,
+  "checkpoint_ttl_seconds": 2764800,
+  "all_checkpoints": {
+    "0": "tinker://68aa37be-d0f1-5b72-99db-35844219fead:train:0/sampler_weights/som0",
+    "139": "tinker://68aa37be-d0f1-5b72-99db-35844219fead:train:0/sampler_weights/som139",
+    "278": "tinker://68aa37be-d0f1-5b72-99db-35844219fead:train:0/sampler_weights/som278",
+    "417": "tinker://68aa37be-d0f1-5b72-99db-35844219fead:train:0/sampler_weights/som417",
+    "556": "tinker://68aa37be-d0f1-5b72-99db-35844219fead:train:0/sampler_weights/som556",
+    "695": "tinker://68aa37be-d0f1-5b72-99db-35844219fead:train:0/sampler_weights/som695"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "seed": 20261021,
+  "replicates": 20000,
+  "n_parent_clusters": 154,
+  "n_canonical_parents": 155,
+  "n_pairs": 309,
+  "method": "Paired percentile bootstrap, resampling parent clusters with replacement, retaining pair-weighted recall",
+  "interpretation": "Conditional on fixed predictions; not training-run variance or a correction for test-informed rule development",
+  "comparisons": [
+    {
+      "label": "Dev-selected prior vs. no-site baseline",
+      "a": "prior_hit",
+      "b": "baseline_hit",
+      "delta_pp": 0.970873786407767,
+      "ci_low": -0.6514657980456026,
+      "ci_high": 2.7027027027027026,
+      "a_recall": 0.47896440129449835,
+      "b_recall": 0.4692556634304207,
+      "parents_net_improved": 5,
+      "parents_net_worsened": 2,
+      "parents_net_tied": 147
+    },
+    {
+      "label": "Retain candidates vs. delete candidates",
+      "a": "saturated_hit",
+      "b": "gate_hit",
+      "delta_pp": 5.17799352750809,
+      "ci_low": 2.536206368646663,
+      "ci_high": 8.275862068965518,
+      "a_recall": 0.37540453074433655,
+      "b_recall": 0.32362459546925565,
+      "parents_net_improved": 13,
+      "parents_net_worsened": 0,
+      "parents_net_tied": 141
+    }
+  ]
+}

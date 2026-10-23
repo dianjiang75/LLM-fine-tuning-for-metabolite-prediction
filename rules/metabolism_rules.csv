@@ -1,0 +1,43 @@
+name,reaction_class,smirks,keep_largest_fragment
+aromatic C-H hydroxylation,phase I: oxidation,[cH:1]>>[c:1]O,0
+aliphatic C-H hydroxylation,phase I: oxidation,"[CX4;H1,H2,H3:1]>>[C:1]O",0
+N-oxidation,phase I: oxidation,[NX3;H0;!$(N=*);!$(N[!#6;!#1]):1]>>[N+:1][O-],0
+S-oxidation,phase I: oxidation,[SX2;!$(S=O):1]>>[S:1]=O,0
+S-dioxidation,phase I: oxidation,[SX2;!$(S=O):1]>>O=[S:1]=O,0
+CH2 -> C=O,phase I: oxidation,[CX4;H2:1]>>[C:1]=O,0
+CH-OH -> C=O,phase I: oxidation,[CX4;H1:1][OX2H1]>>[C:1]=O,0
+primary alcohol -> acid,phase I: oxidation,[CX4;H2:1][OX2H1]>>[C:1](=O)O,0
+aldehyde -> acid,phase I: oxidation,[CX3;H1:1]=O>>[C:1](=O)O,0
+epoxidation,phase I: oxidation,[C:1]=[C:2]>>[C:1]1O[C:2]1,0
+alkene -> diol,phase I: oxidation,[C:1]=[C:2]>>[C:1](O)[C:2]O,0
+aromatic ipso-dehalogenation,phase I: oxidation,"[c:1][F,Cl,Br,I]>>[c:1]O",0
+dehydrogenation C-C,phase I: oxidation,"[CX4;H1,H2:1][CX4;H1,H2:2]>>[C:1]=[C:2]",0
+double-bond reduction,phase I: reduction,[C:1]=[C:2]>>[C:1][C:2],0
+ketone -> alcohol,phase I: reduction,[CX3:1]=[OX1]>>[C:1]O,0
+nitro reduction,phase I: reduction,[N+;$([N+](=O)[O-]):1](=O)[O-]>>[N:1],0
+azo reduction,phase I: reduction,[N:1]=[N:2]>>[N:1].[N:2],1
+N-hydroxylation,phase I: oxidation,"[NX3;H1,H2:1]>>[N:1]O",0
+oxidative deamination,phase I: oxidation,"[CX4;H1,H2:1][NX3;H2]>>[C:1]=O",0
+N-dealkylation (any alkyl),phase I: dealkylation,[#7;!$([#7]=*):1]-!@[CX4:2]>>[#7:1].[C:2],1
+O-dealkylation (any alkyl),phase I: dealkylation,[#6:1][O:2]-!@[CX4;!$(C=O):3]>>[#6:1][O:2].[C:3],1
+S-dealkylation (any alkyl),phase I: dealkylation,[#6:1][S:2]-!@[CX4:3]>>[#6:1][S:2].[C:3],1
+N-dealkylation (ring opening),phase I: dealkylation,[#7;R:1]-@[CX4;R:2]>>[#7:1].[C:2]O,1
+ester hydrolysis,phase I: hydrolysis,[C:1](=[O:2])O[#6:3]>>[C:1](=[O:2])O.[#6:3],1
+amide hydrolysis,phase I: hydrolysis,[C:1](=[O:2])[NX3:3]>>[C:1](=[O:2])O.[N:3],1
+carbamate hydrolysis,phase I: hydrolysis,[NX3:1][C:2](=O)O[#6:3]>>[N:1].[C:2](=O)O.[#6:3],1
+glycoside/ether cleavage,phase I: hydrolysis,[#6:1]-!@[O:2]-!@[#6:3]>>[#6:1][O:2].[#6:3],1
+O-glucuronidation,phase II: conjugation,[OX2;H1:1]>>[O:1][C@@H]1O[C@@H](C(O)=O)[C@H](O)[C@H](O)[C@H]1O,0
+N-glucuronidation,phase II: conjugation,"[NX3;H1,H2:1]>>[N:1][C@@H]1O[C@@H](C(O)=O)[C@H](O)[C@H](O)[C@H]1O",0
+acid glucuronidation,phase II: conjugation,[CX3:1](=O)[OX2H1:2]>>[C:1](=O)[O:2][C@@H]1O[C@@H](C(O)=O)[C@H](O)[C@H](O)[C@H]1O,0
+O-sulfation,phase II: conjugation,[OX2;H1:1]>>[O:1]S(=O)(=O)O,0
+N-sulfation,phase II: conjugation,"[NX3;H1,H2:1]>>[N:1]S(=O)(=O)O",0
+N-acetylation,phase II: conjugation,"[NX3;H1,H2:1]>>[N:1]C(C)=O",0
+O-acetylation,phase II: conjugation,[OX2;H1:1]>>[O:1]C(C)=O,0
+O-methylation,phase II: conjugation,[OX2;H1:1]>>[O:1]C,0
+N-methylation,phase II: conjugation,"[NX3;H1,H2:1]>>[N:1]C",0
+glycine conjugation,phase II: conjugation,[CX3:1](=O)[OX2H1]>>[C:1](=O)NCC(O)=O,0
+taurine conjugation,phase II: conjugation,[CX3:1](=O)[OX2H1]>>[C:1](=O)NCCS(=O)(=O)O,0
+glutamine conjugation,phase II: conjugation,[CX3:1](=O)[OX2H1]>>[C:1](=O)NC(CCC(N)=O)C(O)=O,0
+GSH conjugation (epoxide),phase II: conjugation,[C:1]1O[C:2]1>>[C:1](O)[C:2]SC[C@H](NC(=O)CC[C@H](N)C(O)=O)C(=O)NCC(O)=O,0
+GSH conjugation (halide),phase II: conjugation,"[#6:1][F,Cl,Br,I]>>[#6:1]SC[C@H](NC(=O)CC[C@H](N)C(O)=O)C(=O)NCC(O)=O",0
+phosphorylation,phase II: conjugation,[OX2;H1:1]>>[O:1]P(O)(O)=O,0

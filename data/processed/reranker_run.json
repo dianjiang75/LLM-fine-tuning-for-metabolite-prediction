@@ -1,0 +1,29 @@
+{
+  "base_model": "Qwen/Qwen3-8B",
+  "rank": 32,
+  "batch": 48,
+  "learning_rate": 0.0001,
+  "epochs": 4,
+  "training_steps": 5040,
+  "smoke_steps": 20,
+  "train_examples": 60520,
+  "best_step": 1890,
+  "best_checkpoint": "tinker://b7541ed4-39fb-5ec0-8659-c108dd3a0ee2:train:0/sampler_weights/rank1890",
+  "checkpoint_ttl_seconds": 2764800,
+  "saved_on": "2026-10-20",
+  "probe_molecules": 40,
+  "probe_recall5": 0.4852941176470588,
+  "untuned_probe_recall5": 0.20588235294117646,
+  "untuned_probe_recall1": 0.04411764705882353,
+  "all_checkpoints": {
+    "0": "tinker://b7541ed4-39fb-5ec0-8659-c108dd3a0ee2:train:0/sampler_weights/rank0",
+    "630": "tinker://b7541ed4-39fb-5ec0-8659-c108dd3a0ee2:train:0/sampler_weights/rank630",
+    "1260": "tinker://b7541ed4-39fb-5ec0-8659-c108dd3a0ee2:train:0/sampler_weights/rank1260",
+    "1890": "tinker://b7541ed4-39fb-5ec0-8659-c108dd3a0ee2:train:0/sampler_weights/rank1890",
+    "2520": "tinker://b7541ed4-39fb-5ec0-8659-c108dd3a0ee2:train:0/sampler_weights/rank2520",
+    "3150": "tinker://b7541ed4-39fb-5ec0-8659-c108dd3a0ee2:train:0/sampler_weights/rank3150",
+    "3780": "tinker://b7541ed4-39fb-5ec0-8659-c108dd3a0ee2:train:0/sampler_weights/rank3780",
+    "4410": "tinker://b7541ed4-39fb-5ec0-8659-c108dd3a0ee2:train:0/sampler_weights/rank4410",
+    "5039": "tinker://b7541ed4-39fb-5ec0-8659-c108dd3a0ee2:train:0/sampler_weights/rank5039"
+  }
+}

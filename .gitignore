@@ -1,0 +1,26 @@
+# Credentials: TINKER_API_KEY and WANDB_API_KEY. Never commit.
+.env
+
+# The source datasets belong to their owners and are not redistributed; see Data in README.md.
+data/*.csv
+
+# Prepared splits, rebuilt from those datasets by notebooks/02_data_and_evaluation.ipynb.
+# Each run's record and training history are kept.
+data/processed/*
+!data/processed/*_run.json
+!data/processed/*_history.csv
+
+# Site-of-metabolism training files, rebuilt from the datasets by SOM/som_predictor.ipynb.
+SOM/*.jsonl
+
+# Helper module that came with the datasets.
+/utils/
+
+# Build and editor noise.
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+.DS_Store
+wandb/
+.claude/

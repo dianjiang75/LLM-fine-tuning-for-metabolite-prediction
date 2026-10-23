@@ -1,0 +1,17 @@
+{
+  "1  untuned, direct (few-shot)": {
+    "recall@1": 0.0162,
+    "recall@5": 0.0485,
+    "precision@5": 0.0181
+  },
+  "1b untuned, direct (bare)": {
+    "recall@1": 0.0,
+    "recall@5": 0.0129,
+    "precision@5": 0.0052
+  },
+  "2  untuned, ranking": {
+    "recall@1": 0.0615,
+    "recall@5": 0.2039,
+    "precision@5": 0.08
+  }
+}
