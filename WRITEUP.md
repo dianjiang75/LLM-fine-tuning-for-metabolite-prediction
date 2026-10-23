@@ -1,12 +1,12 @@
 # Metabolite prediction by fine-tuning Qwen3-8B
 
-**The writeup is [`WRITEUP_V2.md`](WRITEUP_V2.md).** It covers:
+**The writeup is [`WRITEUP.html`](WRITEUP.html).** It covers:
 
 | | where |
 |---|---|
-| Summary of experiments and findings | the opening summary, then sections 1 to 5 |
-| Proposed plan for the next three months | section 6 |
-| Estimate of time spent | section 7 |
+| Summary of experiments and findings | sections 1 to 4 |
+| Proposed plan for the next three months | section 5 |
+| Estimate of time spent | footer |
 
 ## The rest of the record
 

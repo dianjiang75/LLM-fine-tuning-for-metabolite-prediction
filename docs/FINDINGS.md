@@ -67,13 +67,13 @@ and test measurements share the 64-sample policy and differ by 7.9 points.
 29.3% and 25.1% also differ in sampling budget, so their 4.2-point gap does not isolate selection
 bias. These observations motivate separate validation and a fixed final evaluation protocol.
 
-**The ranker's 48.5% is a selection instrument, not a dev score.** It is 40 molecules carrying 68
+**The ranker's 48.5% is a selection instrument.** It is 40 molecules carrying 68
 pairs, where a single pair moves the number **1.47 points** and the binomial standard error alone
 is **±6.1 points**, against ±2.8 on the holdout's 309 pairs. It is also, by construction, the
 maximum of the ~18 measurements the checkpoint was selected from. Setting it beside the holdout's
 46.6% would imply a 1.9-point gap that nothing in the data supports. Both standard errors
 understate the real uncertainty anyway, because a parent's pairs share one candidate list and do
-not vary independently; `WRITEUP_V2.md` §6 proposes a clustered bootstrap for this.
+not vary independently; uncertainty estimates should resample whole parents together.
 
 ## 1. MetaTrans has no top-1 figure
 
@@ -480,8 +480,7 @@ acetaminophen to NAPQI looks like an isomerisation when the change is `H-2`, an 
 without hydrogen, six of the nine apparent "isomerisations" were hydrogen changes, and merging
 them inflated the head of the distribution from 8.4 points to 12.
 
-72.2% is the coverage of these 42 rules, not a limit of the approach, and the head is still worth
-having at 8.4 points.
+72.2% is the coverage of these 42 rules. The head is worth 8.4 points.
 
 **Coverage and ranking must be evaluated together.** Overall recall factors as coverage times
 conditional recall. Holding conditional recall fixed would translate a point of coverage into
@@ -514,7 +513,7 @@ scored arm.
 
 Only **5 of 309 test pairs (1.6%)** genuinely need a second step, and **rank-then-expand recovered
 none of them** while still inflating the set sixfold. 42.4% were unreachable at any depth, which is
-a rule-quality problem, not a depth problem.
+a rule-quality problem.
 
 Two-step enumeration does not pay *on this benchmark*, because
 the benchmark is built from literature parent-to-metabolite tables dominated by primary metabolites.
@@ -673,7 +672,7 @@ At k=1 the ordering is consistent: arm 3 beats arm 2 in both runs (8.1% vs 6.1% 
 in the replicate). The fine-tuned generative arm places its single best guess well but offers a narrower
 list; the rule list covers more ground once five slots are available.
 
-What is *not* ambiguous is arm 4. Fine-tuning the ranker beats everything else by roughly ten
+Arm 4 is unambiguous. Fine-tuning the ranker beats everything else by roughly ten
 points at k=5 and does so identically across both runs.
 
 ### Pooling the two candidate sources made things worse
@@ -776,9 +775,8 @@ same weights without retraining (results in §12).
 The candidate scorer had the same defect: a prefix encoded separately from the string it is a
 prefix of.
 
-**"Ours is the more permissive matching rule" was not a valid ordering.** Measuring zero
-fingerprint collisions across 10,036 *rule candidates* says something about that candidate set,
-not about the two criteria. Octane and nonane score Tanimoto **1.000** (different molecules,
+**Neither matching rule contains the other.** Zero fingerprint collisions across 10,036 *rule
+candidates* describes that candidate set, not the criteria. Octane and nonane score Tanimoto **1.000** (different molecules,
 identical fingerprint) while our rule separates them; conversely our rule merges tautomers that
 fingerprints separate. Neither criterion contains the other, so no adjustment reconciles the
 46.0% with MetaTrans's 42.5% in either direction.
@@ -945,7 +943,7 @@ weight of the site signal. The 64.6% and 95.2% conditional recalls use different
 so their gap does not predict a gain from site features. Section 18 tests score-level integration.
 
 **Falling back to the unfiltered list whenever the predictor
-abstains buys 0.6 points (32.4% → 33.0%), because it almost never abstains: 0 of 155 parents came
+abstains buys 0.6 points (32.4% → 33.0%)**, because it almost never abstains: 0 of 155 parents came
 back without a site. The loss comes from confident wrong sites.
 
 ### Scoring a per-pair filter

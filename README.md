@@ -15,7 +15,7 @@ notebooks/
   04_arms.ipynb              arms 1-5, scored on the same test set
   05_reranker.ipynb          trains a second adapter to RANK, scores it as arm 6
   06_experiment_tracking.ipynb publishes the saved run histories to W&B
-WRITEUP_V2.md                the writeup: summary, results, what failed, limitations, plan
+WRITEUP.html                the writeup: summary, results, what failed, limitations, plan
 WRITEUP.md                   a pointer to it, and an index of the rest of the record
 docs/
   FINDINGS.md                every measured result, and where to reproduce it
@@ -164,7 +164,7 @@ Experiment record: [https://wandb.ai/dianjiang75/metabolite-prediction](https://
 ## Result
 
 **Fine-tuned to rank**, recall@5: 46.0% (17.2% at recall@1), or 46.6% (18.1%) with GOSTAR
-mammalian data added. The best **fine-tuned generative** arm reaches 21.4%. The full arm table is in `WRITEUP_V2.md`.
+mammalian data added. The best **fine-tuned generative** arm reaches 21.4%. The full arm table is in `WRITEUP.html`.
 
 Measured on the holdout test set, 309 pairs over 155 parents, standardised-SMILES matching.
 
@@ -186,7 +186,7 @@ candidates or training data and reevaluation; the current recorded experiments r
 limitations. See `docs/FINDINGS.md` §21.
 
 The controls, the split of recall into coverage and ranking, the comparison with published
-baselines and the next steps are in `WRITEUP_V2.md`.
+baselines and the next steps are in `WRITEUP.html`.
 
 ## Measured without a model
 
