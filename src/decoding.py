@@ -122,7 +122,8 @@ def collapse(
             # keep the earliest spelling seen for this molecule, written in canonical form
             best_text.setdefault(key, canonical(text) or text)
 
-    ordered = sorted(votes, key=lambda key: -votes[key])
+    # Break equal vote counts on normalized identity to keep ranking stable across input orders.
+    ordered = sorted(votes, key=lambda key: (-votes[key], key))
     return Decoded(
         predictions=[best_text[key] for key in ordered[:k]],
         n_raw=n_raw,
@@ -168,7 +169,8 @@ def rank_candidates(
         if key not in best or score > best[key][0]:
             best[key] = (score, canonical(smiles) or smiles)
 
-    ordered = sorted(best, key=lambda key: -best[key][0])
+    # Cached scores land on 1/8 steps. Break ties on normalized identity for stable ranking.
+    ordered = sorted(best, key=lambda key: (-best[key][0], key))
     return Decoded(
         predictions=[best[key][1] for key in ordered[:k]],
         n_raw=len(candidates),

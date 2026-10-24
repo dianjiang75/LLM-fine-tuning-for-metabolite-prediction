@@ -40,6 +40,16 @@ _TAUTOMER_PARAMS.maxTautomers = 200
 _TAUTOMER = rdMolStandardize.TautomerEnumerator(_TAUTOMER_PARAMS)
 _MORGAN = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
 
+# RDKit's default parser reads "SMILES<whitespace>NAME", so a refusal such as "I cannot determine
+# this." parses as iodine and scores as a prediction while invalid_rate reports nothing wrong.
+# src/inference.py guards app input the same way, so both paths agree on what a molecule is.
+_PARSER = Chem.SmilesParserParams()
+_PARSER.parseName = False
+
+
+def _parse(smiles: str):
+    return Chem.MolFromSmiles(smiles, _PARSER) if smiles else None
+
 
 # --------------------------------------------------------------------------------------
 # Molecule keys
@@ -48,7 +58,7 @@ _MORGAN = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
 @lru_cache(maxsize=200_000)
 def canonical(smiles: str, keep_stereo: bool = True) -> str | None:
     """Canonical SMILES, optionally with stereochemistry removed."""
-    mol = Chem.MolFromSmiles(smiles) if smiles else None
+    mol = _parse(smiles)
     if mol is None:
         return None
     if not keep_stereo:
@@ -60,19 +70,16 @@ def canonical(smiles: str, keep_stereo: bool = True) -> str | None:
 def standardize(smiles: str) -> str | None:
     """Normalise functional groups, neutralise charges, pick a canonical tautomer, drop stereo.
 
-    Applied identically to training targets, predictions and references, so that a prediction is
-    never marked wrong for writing the same molecule a different way.
+    Applied identically to training targets, predictions and references. This key merges
+    stereoisomers and some charge and tautomer forms, so matches measure normalized connectivity.
     """
-    mol = Chem.MolFromSmiles(smiles) if smiles else None
+    mol = _parse(smiles)
     if mol is None:
         return None
     try:
-        # Canonicalise the atom order first. The tautomer canonicaliser picks among tied tautomers
-        # in input order, so without this the same molecule written two ways can standardise to two
-        # different strings: 19 of 40 random spellings of one training target disagreed. Every
-        # molecule compared here already arrives canonical, so this changes no reported number; it
-        # removes the way a future caller could get a silent false negative.
-        mol = Chem.MolFromSmiles(Chem.MolToSmiles(mol))
+        # Canonicalise atom order before tautomer selection to make the key stable across SMILES
+        # spellings. Otherwise tied tautomers can be selected differently when atom order changes.
+        mol = _parse(Chem.MolToSmiles(mol))
         mol = rdMolStandardize.Normalize(mol)
         mol = _UNCHARGER.uncharge(mol)
         mol = _TAUTOMER.Canonicalize(mol)

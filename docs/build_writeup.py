@@ -27,6 +27,9 @@ prior = pd.read_csv(ROOT / "SOM/som_prior_results.csv")
 P_BASE = float(prior[prior["lambda"] == 0]["holdout_recall5"].iloc[0])
 P_HARD = float(prior[prior["lambda"] == 1e6]["holdout_recall5"].iloc[0])
 P_PICK = prior[prior["chosen"]].iloc[0]
+SOM_PRIOR_EQUATION = (ROOT / "docs/som_prior_equation.svg").read_text().strip()
+assert f'data-prior-weight="{P_PICK["lambda"]:g}"' in SOM_PRIOR_EQUATION, \
+    "Re-render the SOM equation SVG for the selected prior weight."
 history = pd.read_csv(ROOT / "data/processed/finetune_history.csv")
 FT_LOW = history.loc[history["dev_loss"].idxmin()]
 FT_PICK = history.loc[history["dev_recall5"].idxmax()]
@@ -70,7 +73,7 @@ PRO_KEYS = {ev.match_key(m, "standardized") for m in PRO_METS}
 def pro_hits(key):
     return len({ev.match_key(c, "standardized") for c in EX[PRO][key]} & PRO_KEYS)
 
-# Published figures and this method under one matching rule, computed in 05_reranker.ipynb.
+# Different cohorts; the cached pipeline row uses MetaTrans's RDKFingerprint criterion.
 PUB = pd.read_csv(ROOT / "docs/published_comparison.csv", index_col="system")
 OURS = "this pipeline (+GOSTAR mammalian ranker)"
 PUB_ROWS = "".join(
@@ -81,13 +84,13 @@ PUB_ROWS = "".join(
     for s, r in PUB.iterrows())
 
 # The summary table: recall@5, precision and the per-drug hit rate, which are the columns the
-# published figures also report. Every arm's row at k = 1, 3 and 5 is in docs/arm_results.csv.
+# published figures also report. Every configuration's row at k = 1, 3 and 5 is in docs/arm_results.csv.
 A_CTL = "6c untuned control (base mix run)"
-# One name and one order for every arm, matching the table in section 2.2 row for row.
+# One name and one order for every configuration, matching the table in section 2.2 row for row.
 SUMMARY_ARMS = [
     ("Untuned, generative (control)", A_GEN_UNT),
     ("Fine-tuned, generative", A_GEN),
-    ("Fine-tuned generative used as ranker", A_REUSE),
+    ("Fine-tuned generator used as ranker", A_REUSE),
     ("Untuned, ranking by likelihood", "2  untuned, ranking"),
     ("Untuned, ranking (control)", A_CTL),
     ("Fine-tuned to rank", A_RANK),
@@ -103,18 +106,25 @@ SUMMARY_ROWS = "".join(
 
 # Section 2.2 takes its names from the same list, so the two tables cannot disagree.
 PURPOSE = [
-    "Establish a generation baseline, with examples in the prompt",
-    "Evaluate generation after training",
-    "Evaluate candidate ranking with the same trained weights",
-    "Establish a ranking baseline",
-    "Measure performance of the yes/no format before training",
-    "Evaluate training specifically for candidate ranking",
-    "Evaluate additional training data",
+    'Generates metabolites from six examples. Establishes a prompting-only baseline.',
+    'Trains on recorded parent–metabolite pairs. Tests whether fine-tuning improves generation.',
+    'Ranks supplied candidates by generation likelihood, without further training. Tests whether providing candidates improves recovery.',
+    'Ranks candidates by base-model likelihood. Provides a control for configuration 3.',
+    'Ranks candidates using yes/no scores. Establishes the baseline for ranker training.',
+    'Trains on labelled parent–candidate pairs. Compares ranking supervision with the untuned scorer (5) and generator used for ranking (3).',
+    'Adds mammalian GOSTAR records to ranking training. Tests whether more data improves recall over configuration 6.',
 ]
 assert len(PURPOSE) == len(SUMMARY_ARMS)
 CONFIG_ROWS = "".join(
     f"<tr><td class=idx>{i}</td><td>{H.escape(label)}</td><td class=q>{H.escape(why)}</td></tr>"
     for i, ((label, _), why) in enumerate(zip(SUMMARY_ARMS, PURPOSE), 1))
+
+# precision@5 cannot reach 1: the numerator is capped by a drug's recorded metabolite count
+# while the denominator is always k, so the attainable maximum is worth stating beside it.
+_per_parent = (test.assign(key=[ev.match_key(x, "standardized") for x in test["metabolite_smiles"]],
+                           par=[ev.canonical(x) for x in test["parent_smiles"]])
+                   .groupby("par")["key"].nunique())
+PREC_CEIL = sum(min(n, 5) for n in _per_parent) / (len(_per_parent) * 5)
 
 pool = pd.read_csv(ROOT / "docs/pooling_retest.csv")
 POOLED = float(pool[pool["arm"].str.contains("pooled")]["recall@5"].iloc[0])
@@ -122,9 +132,9 @@ POOL_RULES = pool[pool["arm"] == "trained ranker, rules only"].iloc[0]
 POOL_UNION = pool[pool["arm"].str.contains("pooled")].iloc[0]
 
 PRO_ROWS = "".join(
-    f'<tr><td>{H.escape(lab)}</td><td class=n><b>{pro_hits(k)}</b> of {len(PRO_METS)}</td></tr>'
-    for k, lab in (("arm1", "Untuned, generative"), ("arm3", "Fine-tuned, generative"),
-                   ("arm4", "Fine-tuned generative used as ranker"), ("arm6", "Fine-tuned to rank")))
+    f'<tr><td>{number}. {H.escape(SUMMARY_ARMS[number - 1][0])}</td>'
+    f'<td class=n><b>{pro_hits(key)}</b> of {len(PRO_METS)}</td></tr>'
+    for number, key in ((1, "arm1"), (2, "arm3"), (3, "arm4"), (6, "arm6")))
 PRO_MOLS = "".join(f'<figure>{mol(m)}<figcaption>metabolite {i}</figcaption></figure>'
                    for i, m in enumerate(PRO_METS, 1))
 
@@ -196,6 +206,11 @@ h3[id],h4[id],figure[id],div[id]{scroll-margin-top:100px}
 .chain{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;
  font-size:15px;line-height:1.75;margin:16px 0}
 .chain b{color:var(--ink)}
+.math-line{font-family:"STIX Two Math","Cambria Math","Times New Roman",serif;
+ font-size:17px;font-weight:400;line-height:1.5;margin:12px 0 16px}
+.som-equation{margin:10px 0 16px;padding:0;overflow-x:auto}
+.som-equation svg{display:block;width:500px;max-width:100%;height:auto;
+ margin:0 auto;color:var(--ink)}
 th.idx,td.idx{width:26px;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
 td.q{color:var(--muted)}
 td i{color:var(--muted);font-style:normal;font-size:13px}
@@ -216,6 +231,7 @@ PAGE = f"""<!doctype html><html lang=en><head><meta charset=utf-8>
 <h1>Metabolite prediction by fine-tuning Qwen3-8B</h1>
 <p class=byline>by Rencong (Dian) Jiang</p>
 <p class=links>
+<a class=btn href="http://127.0.0.1:8501/" target="_blank" rel="noopener" title="Open the locally running prediction app">Prediction webtool &#8599;</a>
 <a class=btn href="https://wandb.ai/dianjiang75/metabolite-prediction">Experiment record (W&amp;B) &#8599;</a>
 <a class=btn href="docs/FINDINGS.md">Full measured record &#8599;</a>
 <a class=btn href="docs/examples.html">Worked examples &#8599;</a></p>
@@ -224,50 +240,54 @@ PAGE = f"""<!doctype html><html lang=en><head><meta charset=utf-8>
 <nav class=nav>
 <span class=navlabel>Jump to</span>
 <a href="#summary">Summary</a><a href="#methods">Methods</a><a href="#results">Results</a>
-<a href="#discussion">Discussion</a><a href="#next">Next steps</a>
+<a href="#discussion">Discussion and next steps</a>
 </nav>
 
 <section id=summary>
 <h2>1. Summary</h2>
-<p>The task of this project is to predict the metabolites produced when the body transforms a
-parent drug. The input is a SMILES string, a text format for the parent molecule, and the
-fine-tuned LLM model outputs 5 metabolite predictions also in SMILES string format based on
-likelihood scoring.</p>
-<p>There are three hypotheses I want to investigate as I decide how to fine-tune the model:</p>
+<p>Given a parent drug as a SMILES string, this project returns up to five candidate metabolite
+structures. I compared generating structures with Qwen3-8B and using it to rank candidates
+produced by <a href="rules/metabolism_rules.csv">chemical reaction rules</a>.</p>
+<p>The experiments address three questions:</p>
 <ol>
 <li>Can the model write metabolites from scratch, or does it do better picking from a list of
 rule-generated candidates?</li>
-<li>How much data does it take to reach the ceiling? Does more data always help?</li>
+<li>Does adding mammalian GOSTAR records improve the ranker?</li>
 <li>Does a separate adapter predicting the site of metabolism (SOM) make it better?</li>
 </ol>
-<p><b>Methods:</b> for the ranking model in hypothesis #1, we use 42 SMIRKS rules
-(<code>rules/metabolism_rules.csv</code>) to enumerate every metabolite candidate those rules can
+<p><b>Methods:</b> for the ranking model in hypothesis #1, we use <a href="rules/metabolism_rules.csv">42 SMIRKS rules</a>
+to enumerate every metabolite candidate those rules can
 produce for a given parent (median of 32 candidates per parent). Qwen3-8B, fine-tuned with LoRA,
 answers yes/no on each and returns the five highest on <code>logP(yes) &minus; logP(no)</code>.
-Training used 4,276 pairs from DrugBank, GLORYx and MetXBioDB; GOSTAR was not included, to test
-hypothesis #2. For hypothesis #3, a second LoRA adapter was trained on the same drugs with the
-reacting atom marked, so it outputs the parent molecule carrying its SOM as a label.</p>
+The base training corpus contained 4,276 pairs from DrugBank, GLORYx and MetXBioDB. A second
+ranking run added mammalian GOSTAR records. A separate adapter was trained on available site
+annotations, including mammalian GOSTAR.
+It outputs the parent molecule with the predicted reacting atoms marked.</p>
 <p>The main comparison uses the provided test set of 309 pairs. Recall@5 is the share of
-recorded metabolites appearing in the top five. Full metrics accompany the results in Section 3.</p>
-<p>Those scores use standardised-SMILES matching, while MetaTrans counts a prediction correct
-when its fingerprint Tanimoto to a reference is exactly 1.0. Applying their rule to this
-method's own top five puts all four systems on one matching rule:</p>
+recorded metabolites appearing in the top five under standardised matching, which removes
+stereochemistry and merges charge and tautomer representations. The test set informed rule
+development, so these results are exploratory. Full metrics accompany the results in Section 3.</p>
+<p>For context, the table below compares results from different evaluation cohorts. This
+pipeline's saved top five were rescored using the <code>RDKFingerprint</code> equality criterion
+in MetaTrans's released code. The published systems were evaluated on 65 drugs with 179
+metabolites; this pipeline uses 155 parent strings with 309 reference pairs. Reference sets and
+output policies also differ, so the table does not establish which system performs better.</p>
 <table><tr><th>Top-5, fingerprint equality</th><th class=n>recall@5</th>
 <th class=n>precision@5</th><th class=n>drugs with &ge;1 hit</th></tr>
 {PUB_ROWS}</table>
 <p class=cap>Published figures are the top-5 window of Table 4 in Litsa, Das &amp; Kavraki,
-Chem. Sci. 2020.</p>
+Chem. Sci. 2020. The pipeline row is an offline rescore of the later saved scoring pass;
+<a href="docs/FINDINGS.md">the measured record</a> gives its provenance.</p>
 <p><b>Results.</b> Answers to my three hypotheses:</p>
 <ol>
-<li>The ranking model performs best when the model is trained to rank. Reusing the generative
-fine-tune as a ranker scores {at(5, A_REUSE):.1%}, but training a ranker directly brings the
-recall up to {at(5, A_RANK):.1%}, while the untuned model given the same yes/no format scores
-{at(5, A_CTL):.1%} (and only {at(5, A_GEN_UNT):.1%} when writing metabolites from scratch).
-Broader SMIRKS coverage will raise the recall ceiling.</li>
-<li>Increasing the amount of training data to 2.5&times; did little to help the training outcome.
-Adding mammalian GOSTAR records took training examples from 24,025 to 60,520 and moved recall@5
-from {at(5, A_RANK):.1%} to {at(5, A_GOSTAR):.1%}. Both runs stopped improving at epoch 1.5,
-which means the extra data made each epoch longer, but the plateau began in the same place.</li>
+<li>The trained ranker recovered {at(5, A_RANK):.1%} of recorded metabolites, compared with
+{at(5, A_REUSE):.1%} for the generator reused as a ranker and {at(5, A_GEN):.1%} for direct
+generation. The untuned yes/no control scored {at(5, A_CTL):.1%}. These compare complete training
+and scoring recipes; the objective alone was not isolated.</li>
+<li>Adding mammalian GOSTAR records increased ranking examples from 24,025 to 60,520 and moved
+recall@5 from {at(5, A_RANK):.1%} to {at(5, A_GOSTAR):.1%}, two additional reference rows.
+Each mixture was trained once. Both selected checkpoints were at epoch 1.5. The small
+development probe and changing data composition and update count leave data saturation unresolved.</li>
 <li>Using site labels derived from the known answers raises recall from
 {at(5, A_GOSTAR):.1%} to {som['true sites, union per parent']:.1%}. The SOM adapter matches at
 least one labelled site for 62.6% of evaluated drugs. Filtering on its predicted sites reduces
@@ -275,53 +295,69 @@ recall to {som['sites predicted by the model']:.1%}. A development-selected scor
 that retains all candidates reaches {P_PICK['holdout_recall5']:.1%}, compared with its
 {P_BASE:.1%} baseline. This small gain remains uncertain.</li>
 </ol>
-<p><b>Other results.</b> Model size made no difference. Seven base models were compared without
-fine-tuning, from 4B parameters up to 397B. Their scores spanned only 8.4 points, and the
-comparison ran on 120 molecules, which is too few to separate anything closer than about 10
-points. In fact, the 27-billion model scored exactly the same as the 4-billion one.</p>
-<p>Pooling the model's own generated structures into the candidate list from SMIRKS reactions
-dropped recall from {P_BASE:.1%} to {POOLED:.1%}, most likely because every negative the ranker
-trained on was generated from a SMIRKS rule, so model-generated molecules are unlike anything it
-was trained to judge.</p>
+<p><b>Other findings:</b> This small comparison of untuned models showed no consistent relationship
+between model size and recall. Seven models from 4B to 397B parameters were tested on 120
+molecules, with recall@5 ranging from 15.8% to 24.2%. Model families and training variants also
+differed. Qwen3-8B was chosen for its cost and the baselines already available.</p>
+<p>Pooling the model's own generated structures into the candidate list from <a href="rules/metabolism_rules.csv">SMIRKS reactions</a>
+dropped recall from {P_BASE:.1%} to {POOLED:.1%}. Every training negative came from a reaction
+rule, so unfamiliar generated candidates are one possible explanation. That mechanism was not
+tested directly.</p>
+<p>We tested an alternative SMILES format by adding spaces between chemical units. A short
+development pilot found no clear benefit from spaced SMILES: it recovered 1 of 108 reference
+metabolites, compared with 3 for standard SMILES, and used 48% more training tokens.
+Other chemistry-based tokenization methods could be tested next.</p>
 </section>
 
 <section id=methods>
 <h2>2. Methods</h2>
-<p><b>Data and evaluation.</b> We used 4,276 training, 437 development and 309 test
-drug&ndash;metabolite pairs, with splits separated by standardised drug identity. Training fitted
-the model weights; development data selected the saved models. Test drugs were excluded from
-both steps. Rule development included inspection of test transformations, so the evaluation is
-exploratory.</p>
-<p>All configurations used Qwen3-8B and shared molecular matching and output-cleaning
-procedures. Recall@k measures the percentage of recorded metabolites recovered among the top k
-predictions. We report recall@5 throughout, with results at k = 1, 3 and 5 in the
-<a href="docs/arm_results.csv">accompanying results table</a>.</p>
+<p><b>Data and evaluation.</b> We combined DrugBank, GLORYx and MetXBioDB, converted structures
+to canonical SMILES and removed duplicate pairs. We excluded carbon-free parents, parents with
+over 100 heavy atoms, and pairs whose metabolite matched the unchanged parent. We also removed
+stereochemistry from metabolite targets and any resulting duplicates.</p>
+<p>We split the cleaned data 90:10 by standardized parent identity, giving <b>4,276 training pairs
+and 437 development pairs</b>. The provided <b>309 test pairs</b> were excluded from weight fitting
+and checkpoint selection. Their missed transformations informed reaction-rule development.
+A fresh cohort must be reserved before further tuning to estimate generalisation independently.</p>
+<p>For generator training, each parent had up to four SMILES representations, including its
+canonical form and randomized atom orderings. These described the same molecule and shared one
+fixed metabolite target. This expanded training to <b>{ft['train_examples']:,} examples</b>, with the aim of
+reducing sensitivity to how the input SMILES was written. GOSTAR additions were restricted to
+mammalian records, with invalid structures, duplicate pairs and development/test parent overlaps
+removed.</p>
+<p>Our primary metric was <b>recall@5</b>, the fraction of recorded metabolites found among the
+five highest-ranked predictions. Matching normalises functional groups, neutralises charges,
+selects a canonical tautomer and removes stereochemistry. On identical cached predictions,
+recall@5 is 33.7% with exact canonical matching, 44.7% after removing stereo, and 46.9% with full
+standardisation. The endpoint measures recovery under that identity policy; it cannot establish
+recall over unrecorded metabolites.</p>
 
 <h3>2.1 Prediction pipeline</h3>
 <p>We compared generating metabolites directly with ranking candidates produced by 42 editable
-chemical transformation rules. With five predictions allowed per drug, the highest achievable
-recall was <b>71.5%</b>.</p>
+<a href="rules/metabolism_rules.csv">chemical transformation rules encoded as SMIRKS</a>. With five predictions allowed per drug, the
+highest achievable recall@5 from these candidates was <b>71.5%</b> on the test set.</p>
 <p>The trained ranker scored each drug&ndash;candidate pair independently using
 <code>log P(yes) &minus; log P(no)</code> and returned the five highest-scoring candidates.</p>
-<p>Separate LoRA adapters were trained for generation and ranking using the literature
-training corpus. These tasks produced {ft['train_examples']:,} generation examples and
-{rb['train_examples']:,} ranking examples. The expanded ranking dataset included GOSTAR and
-contained {rr['train_examples']:,} examples, approximately
-{rr['train_examples'] / rb['train_examples']:.1f} times as many. Each recorded metabolite was
-paired with up to eight candidates that the rules produce but the source tables do not record for
-that parent, half of them the closest wrong candidates by fingerprint similarity and half drawn at
-random. Some of those negatives may be real metabolites missing from the dataset.</p>
+<p>Separate LoRA adapters were trained for generation and ranking using the literature training
+corpus. These tasks produced {ft['train_examples']:,} generation examples and {rb['train_examples']:,} ranking examples.
+Adding GOSTAR expanded the ranking dataset to {rr['train_examples']:,} examples, approximately {rr['train_examples'] / rb['train_examples']:.1f} times
+its original size, to test whether additional training data improved performance.</p>
+<p><b>Note:</b> Candidates labelled “no” during training may include real metabolites that are
+not recorded for that drug in the datasets.</p>
 
-<h3>2.2 Experimental comparisons</h3>
-<p>Seven configurations examined the effects of task-specific training, prediction method and
-additional data.</p>
-<table><thead><tr><th class=idx>#</th><th>Configuration</th><th>Purpose</th></tr></thead><tbody>
+<h3>2.2 Model configurations and comparison goals</h3>
+<p>We compared seven configurations to test whether fine-tuning improves metabolite prediction,
+how generation compares with candidate ranking, and whether additional training data helps.
+All configurations used Qwen3-8B, the same test drugs and the same evaluation procedure.</p>
+<table><thead><tr><th class=idx>#</th><th>Configuration</th><th>Method and purpose</th></tr></thead><tbody>
 {CONFIG_ROWS}
 </tbody></table>
-<p>The generator-to-ranker comparison changed the training examples, scoring procedure and
-model-selection task. Its improvement therefore reflects the combined approach. Additional
-experiments evaluated a prompt without examples and pooling rule-generated and model-generated
-candidates.</p>
+<p>All ranking configurations used the same rule-generated candidate lists. Configurations 3 and 4
+scored candidate structure strings with an adjustment for string length.</p>
+<p>An additional untuned control used configuration 2’s prompt and sampling settings to assess the
+effect of fine-tuning. Configurations 3 and 6 differed in training, scoring and checkpoint selection,
+so their comparison measures the combined effect of these changes. Adding GOSTAR also increased
+the number of training updates.</p>
 
 <h3>2.3 Choosing the saved model</h3>
 <p>We selected generation and ranking checkpoints with the highest recall@5 on fixed
@@ -363,6 +399,9 @@ PAGE += f"""
 </div>
 <p class=cap>Test set: 309 pairs over 155 canonical parent strings, representing 154
 standardised drug identities. The parent hit rate uses the 155 evaluated parent strings.
+Known-reference precision@5 cannot exceed {PREC_CEIL:.1%} on this test set, because most drugs
+have fewer than five recorded metabolites. Additional valid metabolites can occupy slots without
+receiving credit.
 Results at k = 1, 3 and 5 are in <a href="docs/arm_results.csv">the full results file</a>.</p>
 
 <h3>3.1 Training for ranking gave the strongest results</h3>
@@ -383,12 +422,12 @@ measures the percentage of recorded test metabolites recovered among five predic
 </figure>
 <h4 id=figure-s2>Example: prochlorperazine</h4>
 <p>Three recorded metabolites arise through N-demethylation, aromatic hydroxylation and
-S-oxidation. The rules produce {EX[PRO]['n_candidates']} candidates, and each arm returns five.</p>
+S-oxidation. The rules produce {EX[PRO]['n_candidates']} candidates, and each configuration returns five.</p>
 <div class=mols><figure>{mol(PRO,190,140)}<figcaption>parent</figcaption></figure>
 <div class=arrow>&rarr;</div>{PRO_MOLS}</div>
 <p class=cap><b>Figure 3. Prochlorperazine and its three recorded metabolites.</b></p>
 <table aria-label="Metabolites recovered for prochlorperazine">
-<thead><tr><th scope=col>Arm</th><th class=n scope=col>Metabolites found</th></tr></thead>
+<thead><tr><th scope=col>Configuration</th><th class=n scope=col>Metabolites found</th></tr></thead>
 <tbody>{PRO_ROWS}</tbody></table>
 <p>The fine-tuned generator and the generator reused for ranking each found the hydroxylation
 and sulfoxide products. The trained ranker also recovered the N-demethylation product.</p>
@@ -398,27 +437,26 @@ and sulfoxide products. The trained ranker also recovered the N-demethylation pr
 <p>Adding GOSTAR increased the ranking dataset approximately 2.5-fold and moved recall from
 <b>{at(5, A_RANK):.1%} to {at(5, A_GOSTAR):.1%}</b>, recovering two additional metabolites.
 Both runs reached their highest measured development recall around 1.5 training epochs.
-Each configuration was trained once, so the reliability of this small gain remains uncertain.</p>
+Each configuration was trained once, so the reliability of this small gain remains uncertain.
+The selected checkpoints each recovered 33 of 68 development pairs, the maximum of nine
+checkpoint evaluations per run. Total optimizer updates were 2,020 and 5,060, including smoke runs.</p>
 <figure class=fig id=figure-s1>
 <img src="{png('reranker_curves.png')}" alt="Development recall during ranking-model training with the base dataset and the GOSTAR-expanded dataset">
 <figcaption><b>Figure 4. Ranking-model training.</b> Development recall@5 on 40 drug structures containing 68 recorded pairs.
 The base dataset contains {rb['train_examples']:,} examples; the GOSTAR-expanded dataset
 contains {rr['train_examples']:,}. Each curve represents one training run.</figcaption>
 </figure>
-<p>Pooling rule-generated and model-generated candidates together increased metabolite coverage
-from {POOL_RULES['reachable']:.1%} to {POOL_UNION['reachable']:.1%}. However, in the evaluation
-using the same trained ranker for both lists, the recall@5 fell from
-{POOL_RULES['recall@5']:.1%} to {POOLED:.1%}, indicating that the expanded candidate list reduced
-the effectiveness of ranking.</p>
+<h3>3.3 Metabolite coverage and recall by <a href="rules/metabolism_rules.csv">SMIRKS reaction rule</a></h3>
+<p>The <a href="rules/metabolism_rules.csv">42 SMIRKS rules</a> did not cover <b>86 of 309 recorded metabolites</b>, leaving those answers
+unavailable to the ranker. For the base ranker, the law of total probability gives:</p>
+<p class=math-line>46.0% overall recall@5 = 72.2% rule coverage &times; 63.7% recall among reachable metabolites</p>
+<p>Expanding the rules to cover common missing transformations could make more metabolites
+available for prediction. Any increase in overall recall would also depend on how accurately the
+ranker orders the additional candidates. Among the 24 missed aliphatic hydroxylations, 13 had
+another product of the same rule in the top five, with hydroxylation at a different position.
+This error slice motivates testing whether site-of-metabolism predictions improve candidate
+ordering.</p>
 
-<h3>3.3 Errors involved missing candidates and reaction sites</h3>
-<p>The rules failed to propose <b>86 of 309 recorded metabolites</b>. These answers were
-unavailable to the ranker.</p>
-<p>Performance also varied by reaction type. The ranker recovered <b>28 of 29
-O-glucuronidation products</b> and <b>18 of 42 aliphatic hydroxylation products</b>. Among the
-24 missed aliphatic hydroxylations, 14 had another product of the same rule in the top five.
-This suggests difficulty identifying the reaction site, the atom where the chemical change
-occurs.</p>
 <figure class=fig id=figure-5>
 <img src="{png('misses_by_chemistry.png')}" alt="Recorded metabolites recovered, ranked below the top five or absent from the candidate lists, grouped by reaction type">
 <figcaption><b>Figure 5. Recovery by reaction type.</b> Bars distinguish recovered
@@ -427,103 +465,69 @@ Pairs are grouped by the first matching rule. This analysis uses the later GOSTA
 which recovered 145 of 309 metabolites ({P_BASE:.1%}).</figcaption>
 </figure>
 
-<h3>3.4 Using reaction-site information</h3>
-<p>Filtering candidates using recorded reaction sites increased recall from
-<b>{som['arm 6, no site information']:.1%} to {som['true sites, union per parent']:.1%}</b>.
-These sites came from the known answers, so this experiment assessed the potential value of
-site information.</p>
-<p>A separate model predicted at least one labelled site for <b>62.6%</b> of evaluated drugs.
-Filtering candidates using these predictions reduced recall to
-<b>{som['sites predicted by the model']:.1%}</b>. Incorrect site predictions could remove the
-recorded metabolite from consideration.</p>
-<p>We then used predicted sites to adjust candidate scores while retaining every candidate.
-The setting selected on development data reached <b>{P_PICK['holdout_recall5']:.1%}</b>,
-compared with its <b>{P_BASE:.1%}</b> baseline, recovering three additional metabolites.
-The estimated gain remains uncertain: its 95% confidence interval spans
-<b>{PRIOR_INTERVAL['ci_low']:.1f} to +{PRIOR_INTERVAL['ci_high']:.1f} percentage points</b>.</p>
-<p class=cap>Re-evaluating the same model recovered one additional metabolite, moving the
-baseline from {at(5, A_GOSTAR):.1%} to {P_BASE:.1%}. The uncertainty estimate was calculated
-by repeatedly sampling test drugs and reusing their saved predictions.
-Source files: <a href="docs/pooling_retest.csv">candidate-pooling results</a>,
-<a href="SOM/som_prior_results.csv">site-adjustment results</a> and
-<a href="docs/paired_bootstrap.json">uncertainty calculations</a>.</p>
+<h3>3.4 Using Site of Metabolism (SOM) Information</h3>
+<p>A site of metabolism (SOM) identifies where a chemical change occurs in the parent molecule.
+For each drug, we used sites recorded for its known metabolites to keep only candidates generated
+by rules acting at those sites. The same ranker then ordered the remaining candidates, increasing
+recall@5 from {som['arm 6, no site information']:.1%} to {som['true sites, union per parent']:.1%}.
+Knowing the reaction sites therefore substantially improved prediction in this experiment.</p>
+<p>We then used a separate model to predict the sites. Filtering with these predictions kept only
+105 of 223 reachable reference metabolites and reduced recall@5 to
+{som['sites predicted by the model']:.1%}. This suggests that the site predictions were too
+incomplete or inaccurate to use as a hard filter.</p>
+<p>We then kept all candidates and used the predicted sites as a soft prior. Candidates supported
+by a predicted site received a score bonus controlled by the prior weight, λ = {P_PICK['lambda']:g}:</p>
+<div class=som-equation>
+{SOM_PRIOR_EQUATION}
+</div>
+<p>The indicator is 1 when a candidate's reacting atoms overlap a predicted site, and 0 otherwise.</p>
+<p>The prior increased recall@5 from {P_BASE:.1%} to {P_PICK['holdout_recall5']:.1%}, a gain of
+approximately one percentage point. Its 95% confidence interval spans
+{format(PRIOR_INTERVAL['ci_low'], '.1f').replace('-', '−')} to +{PRIOR_INTERVAL['ci_high']:.1f}
+percentage points and includes zero, so the improvement remains uncertain. The interval resamples
+154 standardised parent clusters, retaining all reference rows for each sampled drug. It is
+conditional on the saved predictions and excludes variation from retraining or rule selection.</p>
 </section>
 """
 
 PAGE += f"""
 <section id=discussion>
-<h2>4. Discussion</h2>
+<h2>4. Discussion and next steps</h2>
 
-<h3>4.1 Decomposition of the remaining error</h3>
-<p>Because a ranking arm can only return what the rules produced, its score factors exactly:</p>
-<div class=chain><b>{at(5, A_RANK):.1%}</b> overall &nbsp;=&nbsp; <b>72.2%</b> rule coverage
-&nbsp;&times;&nbsp; <b>63.7%</b> recall given the answer is reachable</div>
-<p>Coverage did not move between the two fine-tunes. The ranking component went from 42.6% to
-63.7%, closing 37% of the gap to a perfect ranker. A flawless top-five ranker would reach 71.5%
-rather than 72.2%, because two parents have six reachable answers and only five slots. That
-leaves 25.5 points inside lists that already contain the answer, against 8.4 points available
-from the five largest missing transformation families.</p>
+<h3>4.1 Chemistry: candidate coverage and reaction sites</h3>
+<p>The current rules cannot reach 27.8% of reference pairs. We would repair incorrect rule products
+and expand missing transformations, starting with hydroxylation. Each rule should pass atom-mapping
+and product checks. We would also review the ranker's top-five errors to build harder training
+examples, then test training it to compare candidates from the same drug. Unrecorded products
+would remain uncertain labels unless further evidence resolves their status.</p>
+<p>Known reaction sites improved recall. Filtering with predicted sites removed many reachable
+answers. We would improve site prediction and train the ranker with site-marked parent structures,
+keeping all candidates. Training-site predictions should come from models that did not train on
+those drugs, so the ranker learns from realistic prediction errors.</p>
 
-<p>The quality of the training labels depends on how thoroughly each drug’s metabolism has been studied. An unrecorded candidate may have been missed experimentally or never investigated. Improving the dataset would therefore require a clearly defined prediction setting, records of experimental conditions and detection limits, and follow-up assessment of promising predictions without a recorded match. This would help us distinguish incorrect predictions from gaps in the available evidence.</p>
+<h3>4.2 AI engineering: molecular representation and training</h3>
+<p>Our small pilot added spaces between SMILES units using Qwen's existing vocabulary. It showed
+no clear recall gain and used more tokens. A short output-budget check would compare 96- and 192-token limits
+on the same generator with matched sampling seeds. We would then repeat the representation test
+with longer training and several training seeds, checking that training and inference use the
+same encoding.</p>
+<p>After the data and evaluation checks, experiments could test learned chemical fragments as tokens, as in
+<a href="https://doi.org/10.1021/acs.jcim.0c01127">SMILES Pair Encoding</a>, with compatible model
+embeddings and output layers. We would also test a short training stage on molecular structure
+tasks, such as ring counting, before fine-tuning the ranker, following
+<a href="https://aclanthology.org/2025.emnlp-main.791/">CLEANMOL</a>. Their benefit for metabolite
+ranking remains untested. Compare each change against the same baseline, tracking recall, valid
+outputs, runtime and token cost.</p>
 
-<h3>4.2 Validation loss as a selection criterion</h3>
-<p>The growing gap between training and development loss suggests overfitting. Selecting by
-development recall@5 gave the checkpoint that recovered the most metabolites on that subset.
-Repeated training runs and evaluation on an untouched dataset are needed to assess how well
-this choice generalises. Multiple valid metabolites and SMILES spellings may contribute to the
-difference between loss and recall; we did not test that explanation directly.</p>
-
-<h3>4.3 What we would improve in the engineering</h3>
-<p>The next engineering experiments should examine how closely training matches the final prediction task. Our ranker learns a yes/no decision for each candidate, so a useful next experiment is to train it to compare candidates from the same drug, focusing on mistakes that it currently scores highly. When expanding the candidate sources, we would test training the ranker on the combined list, given the drop in recall observed when we pooled them. For precision, the current five-slot metric is limited by incomplete metabolite records, and the ranking scores have not been calibrated as confidence estimates. We would therefore evaluate a confidence threshold for returning shorter lists, reporting their precision and coverage separately. These changes should be compared on a larger development set using the final prediction procedure, with other training settings held fixed and raw outputs saved so that each improvement can be checked.</p>
-
-<h3>4.4 Limitations</h3>
-<p>The holdout set was never trained on and never used to choose a checkpoint. The rule set is the
-one exception: its stopping point was chosen by inspecting which holdout transformations remained
-uncovered, so the rules saw that distribution even though no model did. 44% of holdout parents
-share a scaffold with a training parent, and recall was never scored as a function of that
-similarity. Sampling is unseeded and <code>compute_logprobs</code> is not bit-reproducible, so a
-rerun reproduces the shape of every curve and the ordering of the arms, not the exact figures.
-Three independent audits ran against this work; each removed a causal claim, and the measurements
-underneath held.</p>
+<p id=next><b>Three-month sequence:</b> Month 1 would cover data and rule repairs, a reserved evaluation
+set, and reviewed ranking errors. Month 2 would test learned SOM inputs and selected LLM changes,
+including a small RL pilot. Month 3 would repeat promising runs and evaluate the fixed pipeline
+on the reserved set.</p>
 </section>
-
-<section id=next>
-<h2>5. Next steps</h2>
-<h3>Month 1: widen the candidate list, and train the ranker on its own mistakes</h3>
-<p>Two things, both measured. <b>27.8%</b> of holdout pairs are unreachable from the current 42
-SMIRKS rules, and a parent the rules miss scores zero however good the ranker is; the five largest
-missing transformation families alone account for <b>8.4 points</b> of coverage, and the largest
-is plain hydroxylation, which is cheap to write. Separately, the ranker's negatives are drawn by
-fingerprint similarity, which is a proxy for what confuses it. Train it on its own top-five
-mistakes instead, which is what actually confuses it, and score a drug's whole candidate list
-together rather than one candidate at a time, so the model compares candidates instead of judging
-each in isolation. <b>25.5 points</b> sit inside lists that already contain the answer.</p>
-
-<h3>Month 2: build a site-of-metabolism model worth using, and give it to the ranker as an input</h3>
-<p>Given the true site, the ranker finds <b>90.5%</b> of the answers still reachable against
-<b>64.6%</b> with no site information. That is the size of what is available. Our own site
-predictor marks a true site for 62.6% of parents, which is not enough to filter on, and the gap
-between those two numbers is the work. The fix is architectural as much as it is accuracy: put
-the predicted sites in the ranker's prompt and retrain on site-marked drugs, so the model learns
-per drug how far to trust them, rather than a filter deleting an answer whenever the guess is
-wrong.</p>
-
-<h3>Month 3: use the enzyme, and make the numbers defensible</h3>
-<p>Every dataset carries an enzyme column and this work discards it, on the assumption that the
-SMIRKS rules already encode most of what the enzyme would tell the model. That assumption is
-untested and cheap to test: add the enzyme as an optional input and measure. Extend uncertainty
-estimates to the main model comparisons and measure variability across repeated training runs.
-Add an abstention path so the model can decline on a scaffold
-unlike anything it trained on; in tox screening a confident wrong answer costs more than a
-refusal.</p>
-</section>
-
-
 
 <footer>
-<p><b>Time spent:</b> about 30 to 40 hours over three to four days. The two ranking fine-tunes
+<p><b>Time spent:</b> about 30 to 40 hours over four to five days. The two ranking fine-tunes
 account for roughly 13 of those on their own and ran unattended.</p>
-<p>Built from saved experiment results with <code>docs/build_writeup.py</code>.</p>
 </footer>
 
 </div></body></html>"""

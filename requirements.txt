@@ -1,10 +1,8 @@
 # Analysis versions used for the recorded numbers, on Python 3.12.
 # The interface was updated to Streamlit 1.56.0 for compatibility with pandas 3.
 #
-# RDKit is pinned deliberately rather than left floating. Its canonical SMILES output,
-# tautomer canonicaliser and Morgan fingerprint generator all decide when two molecules
-# count as the same answer, so a different RDKit can move every coverage and recall figure
-# in docs/FINDINGS.md without any code changing.
+# RDKit is pinned because canonical SMILES, tautomer selection and fingerprint generation
+# affect molecular comparisons. Changing its version can change the reported metrics.
 
 rdkit==2024.3.5
 pandas==3.0.1
@@ -19,11 +17,10 @@ ipykernel==6.30.1
 # The charts in notebooks 03 and 04.
 matplotlib==3.10.8
 
-# The Tinker training and sampling API. Needs TINKER_API_KEY in .env.
+# The Tinker training and sampling API. Needs TINKER_API_KEY in the environment or .env.
 tinker==0.34.0
 
-# Pulled in by utils/molecule_utils.py, which was provided with the brief and which notebook 04
-# imports for SMILES randomisation.
+# Molecule drawing and notebook figures. SMILES augmentation is bundled in src/smiles.py.
 pillow==10.4.0
 
 # Publishing the saved run histories (notebook 06).

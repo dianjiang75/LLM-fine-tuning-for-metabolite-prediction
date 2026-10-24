@@ -1,5 +1,5 @@
 system,recall@5,precision@5,any_hit@5,matching,source
-this pipeline (+GOSTAR mammalian ranker),0.44660194174757284,0.1767741935483871,0.6064516129032258,fingerprint equality,notebooks/05_reranker.ipynb
+this pipeline (+GOSTAR mammalian ranker),0.459546925566343,0.18193548387096775,0.6129032258064516,RDKit RDKFingerprint equality,scripts/rescore_saved.py; SOM/som_candidate_scores.json
 MetaTrans,0.425,0.235,0.8,fingerprint equality,"Litsa, Das & Kavraki, Chem. Sci. 2020, Table 4"
 "SyGMa (rule-based, 2008)",0.424,0.234,0.723,fingerprint equality,"Litsa, Das & Kavraki, Chem. Sci. 2020, Table 4"
 GLORYx,0.302,0.166,0.646,fingerprint equality,"Litsa, Das & Kavraki, Chem. Sci. 2020, Table 4"
