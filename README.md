@@ -163,9 +163,6 @@ requirements.txt             pinned analysis packages and compatible interface d
 ## Data
 
 The datasets are not in this repository. Their owners license them, and one of them is commercial.
-The submission package is the one exception: it carries back `data/test_set.csv`, the 309-pair
-benchmark that came with the task, so the interface can show recorded metabolites beside its
-predictions. It stays out of the public repository.
 The notebooks expect five CSV files in `data/`, each with the columns `parent_smiles`,
 `metabolite_smiles`, `som_smiles`, `enzyme`, `species`, `source`, `reaction`,
 `parent_inchi_nostereo` and `parent_scaffold_smiles`.
@@ -205,7 +202,6 @@ uv pip check --python .venv/bin/python
 
 The offline check uses committed artifacts. It requires no source datasets, API key or model
 checkpoint access.
-The final rehearsal and its scope are recorded in [`docs/VALIDATION.md`](docs/VALIDATION.md).
 
 ### Replay the saved predictions
 
